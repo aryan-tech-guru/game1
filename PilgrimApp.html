@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a0b00">
+    <title>Divya Darshan | Premium Devotee App</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 300: '#FFD166', 500: '#FF9900', 600: '#E67E00', 900: '#4A2500' },
+                        panel: 'rgba(20, 12, 5, 0.65)',
+                        surface: '#0A0500'
+                    },
+                    fontFamily: { sans: ['Poppins', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 3s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        glow: { '0%': { boxShadow: '0 0 15px rgba(255,153,0,0.2)' }, '100%': { boxShadow: '0 0 30px rgba(255,153,0,0.6)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/easyqrcodejs@4.4.4/dist/easy.qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      { "imports": { "three": "https://unpkg.com/three@0.154.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.154.0/examples/jsm/" } }
+    </script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0A0500; color: #ffffff; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        #webgl-container { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .ambient-orb { position: fixed; border-radius: 50%; filter: blur(90px); opacity: 0.25; pointer-events: none; z-index: 1; }
+        .orb-1 { top: -10%; left: -20%; width: 60vw; height: 60vw; background: #FF9900; }
+        .orb-2 { bottom: -10%; right: -20%; width: 70vw; height: 70vw; background: #FF4500; }
+        .app-wrapper { position: relative; z-index: 10; width: 100%; max-width: 480px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; }
+        #main-app { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 120px; padding-top: 1rem; padding-left: 1rem; padding-right: 1rem; scroll-behavior: smooth; }
+        .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel { background: var(--panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 153, 0, 0.15); border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); }
+        .tab-content { display: none; animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tab-content.active { display: block; }
+        .step-content { display: none; animation: slideIn 0.3s ease-out forwards; }
+        .step-content.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .floating-nav { position: fixed; bottom: max(15px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: 96%; max-width: 460px; border-radius: 2.5rem; background: rgba(10, 5, 0, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255,153,0,0.2); padding: 0.5rem; z-index: 50; display: flex; justify-content: space-between; box-shadow: 0 20px 40px rgba(0,0,0,0.9); overflow-x: auto; }
+        .nav-btn { transition: all 0.3s ease; border-radius: 2rem; color: #8A6D4B; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.5rem 0.75rem; flex-shrink: 0; }
+        .nav-btn.active { background: rgba(255, 153, 0, 0.15); color: #FFD166; border: 1px solid rgba(255, 153, 0, 0.3); transform: translateY(-4px); box-shadow: 0 4px 15px rgba(255,153,0,0.2); }
+        .petal { position: absolute; bottom: 20px; font-size: 24px; animation: floatUp 2.5s ease-out forwards; pointer-events: none; z-index: 100; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.8) rotate(0deg); opacity: 1; } 100% { transform: translateY(-300px) scale(1.5) rotate(180deg); opacity: 0; } }
+        #qr-timer-container { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+        #qr-timer { height: 100%; background: #FFD166; width: 100%; }
+        .slider-container { width: 100%; height: 56px; background: rgba(239,68,68,0.1); border-radius: 28px; position: relative; overflow: hidden; border: 1px solid rgba(239,68,68,0.3); touch-action: none; }
+        .slider-thumb { width: 50px; height: 50px; background: #ef4444; border-radius: 50%; position: absolute; top: 2px; left: 3px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(239,68,68,0.8); z-index: 2; transition: left 0.1s; }
+        .slider-text { position: absolute; width: 100%; text-align: center; line-height: 56px; font-size: 13px; font-weight: bold; color: rgba(255,255,255,0.6); z-index: 1; letter-spacing: 1px; pointer-events: none; }
+        .slider-bg { position: absolute; top: 0; left: 0; height: 100%; width: 0; background: rgba(239,68,68,0.4); z-index: 0; transition: width 0.1s; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        select option { color: #000; }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div id="webgl-container"></div>
+
+    <div id="splash-screen" class="fixed inset-0 z-[200] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#7A2800] via-[#1A0B00] to-[#0A0500] flex flex-col items-center justify-center transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)]">
+        
+        <button onclick="toggleLanguage()" class="absolute top-5 right-5 z-50 bg-black/40 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg flex items-center gap-2 hover:bg-white/10 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path></svg>
+            <span id="lang-btn-splash">A/अ</span>
+        </button>
+
+        <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:30px_30px]"></div>
+        <div class="absolute top-1/3 w-72 h-72 bg-brand-500/30 rounded-full blur-[120px] animate-pulse pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col items-center">
+            <div class="w-28 h-28 rounded-full bg-gradient-to-br from-brand-600 to-brand-900 border-2 border-brand-400 flex items-center justify-center text-white text-6xl mb-6 shadow-[0_0_50px_rgba(255,153,0,0.6)] animate-float">ॐ</div>
+            <h1 class="text-4xl font-extrabold text-white tracking-tight mb-3 drop-shadow-lg" data-i18n="app_title">Divya Darshan</h1>
+            <p class="text-sm text-brand-300 mb-12 text-center px-8 max-w-xs leading-relaxed font-medium drop-shadow-md" data-i18n="splash_desc">Your premium digital gateway to the divine. Experience seamless darshan and spiritual offerings.</p>
+            
+            <button id="enter-app-btn" class="bg-white hover:bg-gray-100 text-[#7A2800] font-extrabold py-4 px-10 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all transform hover:scale-105 flex items-center gap-3 active:scale-95">
+                <span data-i18n="begin_journey">Begin Journey</span>
+                <svg class="w-5 h-5 animate-bounce mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="app-wrapper">
+        <button id="sos-trigger-btn" class="fixed top-5 right-4 z-50 w-12 h-12 rounded-full bg-red-600 border border-red-400 flex items-center justify-center text-white shadow-[0_0_20px_rgba(239,68,68,0.8)] animate-[pulse_2s_infinite]">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </button>
+
+        <div id="main-app">
+            <header class="mb-6 px-2 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-brand-900 border-2 border-brand-500 flex items-center justify-center text-brand-300 font-bold shadow-[0_0_15px_rgba(255,153,0,0.4)]">ॐ</div>
+                    <div>
+                        <p class="text-[10px] font-bold text-brand-500 uppercase tracking-widest" data-i18n="greeting">Namaste, Devotee</p>
+                        <h1 class="text-2xl font-extrabold text-white tracking-tight" data-i18n="app_title">Divya Darshan</h1>
+                    </div>
+                </div>
+                <button onclick="toggleLanguage()" class="bg-white/10 backdrop-blur-md border border-white/20 w-8 h-8 rounded-full text-xs font-bold text-brand-300 flex items-center justify-center hover:bg-white/20 transition-all mr-14">
+                    A/अ
+                </button>
+            </header>
+
+            <div id="home" class="tab-content active space-y-5">
+                <div class="glass-panel p-6 animate-glow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xs font-bold text-brand-300/70 uppercase tracking-widest" data-i18n="temple_status">Temple Status</h2>
+                        <span class="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-1 rounded-full font-bold flex items-center gap-1" id="ai-status">
+                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span> <span data-i18n="smooth">SMOOTH</span>
+                        </span>
+                    </div>
+                    <div class="flex items-end gap-3 mb-2">
+                        <span class="text-5xl font-black text-white" id="stat-delay">15</span>
+                        <span class="text-lg text-brand-300 font-medium mb-1" data-i18n="mins">Mins</span>
+                    </div>
+                    <p class="text-sm text-gray-400 font-medium" data-i18n="est_wait">Estimated wait time for General Darshan.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-panel p-5 flex flex-col items-center text-center cursor-pointer hover:bg-white/5 transition" onclick="setActiveTab('booking')">
+                        <div class="w-12 h-12 rounded-full bg-brand-900 border border-brand-500/50 flex items-center justify-center mb-3">
+                            <svg class="w-6 h-6 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path></svg>
+                        </div>
+                        <p class="font-bold text-sm text-white" data-i18n="book_pass">Book Pass</p>
+                        <p class="text-[10px] text-brand-300/70 mt-1" data-i18n="avoid_lines">Avoid long lines</p>
+                    </div>
+                    <div class="glass-panel p-5 flex flex-col items-center text-center cursor-pointer hover:bg-white/5 transition" onclick="setActiveTab('donate')">
+                        <div class="w-12 h-12 rounded-full bg-brand-900 border border-brand-500/50 flex items-center justify-center mb-3">
+                            <svg class="w-6 h-6 text-brand-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <p class="font-bold text-sm text-white" data-i18n="offer_seva">Offer Seva</p>
+                        <p class="text-[10px] text-brand-300/70 mt-1" data-i18n="digital_hundi">Digital Hundi</p>
+                    </div>
+                </div>
+                
+                <div class="glass-panel p-6 mt-4 border-brand-500/20">
+                    <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2"><svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> <span data-i18n="today_quote">Today's Darshan Quote</span></h3>
+                    <p class="text-xs text-gray-300 italic leading-relaxed" data-i18n="gita_quote">"Set your heart upon your work, but never on its reward." - Bhagavad Gita</p>
+                </div>
+            </div>
+
+            <div id="donate" class="tab-content space-y-5">
+                <div class="glass-panel p-6 border-brand-500/30 relative overflow-hidden" id="donation-card">
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-brand-500/20 rounded-full blur-3xl pointer-events-none"></div>
+                    <h2 class="text-2xl font-extrabold text-white mb-2" data-i18n="digital_hundi_title">Digital Hundi</h2>
+                    <p class="text-xs text-brand-300 mb-6" data-i18n="hundi_desc">Your contributions maintain the temple.</p>
+                    
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2">
+                        <button class="cause-btn active px-4 py-2 rounded-xl border border-brand-500 bg-brand-500/20 text-brand-300 text-xs font-bold" data-i18n="cause_annadaan">🍲 Annadaan</button>
+                        <button class="cause-btn px-4 py-2 rounded-xl border border-white/10 bg-black/40 text-white/70 text-xs font-bold" data-i18n="cause_gaushala">🐄 Gaushala</button>
+                        <button class="cause-btn px-4 py-2 rounded-xl border border-white/10 bg-black/40 text-white/70 text-xs font-bold" data-i18n="cause_trust">🛕 Temple Trust</button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 mb-6">
+                        <button class="amt-btn px-3 py-3 rounded-xl border border-white/10 bg-black/40 text-white font-bold" data-amt="101">₹101</button>
+                        <button class="amt-btn active px-3 py-3 rounded-xl border border-brand-500 bg-brand-500/20 text-brand-300 font-bold shadow-[0_0_15px_rgba(255,153,0,0.2)]" data-amt="501">₹501</button>
+                        <button class="amt-btn px-3 py-3 rounded-xl border border-white/10 bg-black/40 text-white font-bold" data-amt="1100">₹1100</button>
+                    </div>
+
+                    <div class="bg-black/40 border border-white/10 rounded-xl p-4 flex items-center justify-between mb-6">
+                        <span class="text-gray-400 text-sm" data-i18n="custom_amount">Custom Amount</span>
+                        <div class="flex items-center text-white font-bold text-xl">
+                            ₹<input type="number" id="custom-donate" class="w-20 bg-transparent text-right focus:outline-none ml-1 text-brand-300" placeholder="0">
+                        </div>
+                    </div>
+
+                    <button id="pay-donate-btn" class="w-full bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 text-white font-extrabold py-4 rounded-xl shadow-[0_0_20px_rgba(255,153,0,0.4)] flex justify-center items-center gap-2">
+                        <span data-i18n="offer_seva_btn">Offer Seva</span> <span id="donate-btn-total" class="font-mono">₹501</span>
+                    </button>
+                </div>
+
+                <div id="donation-success" class="glass-panel p-8 text-center hidden border-green-500/50 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-green-500/10 animate-pulse"></div>
+                    <div class="w-20 h-20 mx-auto bg-green-500/20 border-2 border-green-500 rounded-full flex items-center justify-center mb-4"><svg class="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div>
+                    <h2 class="text-2xl font-black text-white mb-2 relative z-10" data-i18n="seva_accepted">Seva Accepted</h2>
+                    <p class="text-sm text-green-400 font-medium mb-6 relative z-10" data-i18n="blessings">May the divine blessings be with you.</p>
+                    <button class="mt-6 text-brand-300 text-xs font-bold underline relative z-10" onclick="resetDonation()" data-i18n="make_another">Make another offering</button>
+                </div>
+            </div>
+
+            <div id="map" class="tab-content space-y-5">
+                <div class="glass-panel p-6 border-brand-500/30">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 class="text-xl font-extrabold text-white mb-1" data-i18n="map_title">Live Spiritual Map</h2>
+                            <p class="text-xs text-brand-300" data-i18n="map_desc">Real-time crowd visualization</p>
+                        </div>
+                        <div class="text-[10px] font-mono text-green-400 bg-green-500/20 border border-green-500/30 px-2 py-1 rounded font-bold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span> <span data-i18n="live">LIVE</span>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full aspect-square bg-black/60 border border-white/10 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center p-4">
+                        <div class="absolute inset-0 rounded-full border border-brand-500/20 w-[150%] h-[150%] -left-[25%] -top-[25%] animate-[spin_4s_linear_infinite] opacity-30" style="background: conic-gradient(from 0deg, transparent 70%, rgba(255,153,0,0.4) 100%);"></div>
+                        <div class="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+                        
+                        <div class="relative w-full h-full flex flex-col items-center justify-between z-10 py-4">
+                            <div class="relative w-28 h-28 border-2 border-brand-500/50 rounded-xl flex items-center justify-center bg-brand-900/40 backdrop-blur-sm shadow-[0_0_15px_rgba(255,153,0,0.2)]">
+                                <span class="text-[11px] font-extrabold text-brand-300 z-10 tracking-widest" data-i18n="shrine">SHRINE</span>
+                                <div id="zone-sanctum-glow" class="absolute inset-0 bg-yellow-500/30 rounded-xl animate-pulse blur-md"></div>
+                            </div>
+                            <div class="flex w-full justify-around px-2">
+                                <div class="relative w-20 h-24 border border-white/20 rounded-lg flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+                                    <span class="text-[9px] font-bold text-gray-400 tracking-wider" data-i18n="gate_a">GATE A</span>
+                                    <div id="zone-north-glow" class="absolute inset-0 bg-green-500/20 rounded-lg animate-pulse blur-sm"></div>
+                                </div>
+                                <div class="relative w-20 h-24 border border-white/20 rounded-lg flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+                                    <span class="text-[9px] font-bold text-gray-400 tracking-wider" data-i18n="gate_b">GATE B</span>
+                                    <div id="zone-east-glow" class="absolute inset-0 bg-green-500/20 rounded-lg animate-pulse blur-sm"></div>
+                                </div>
+                            </div>
+                            <div class="relative w-40 h-14 border border-white/20 rounded-b-[2rem] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                                <span class="text-[9px] font-bold text-gray-400 tracking-wider" data-i18n="entrance">MAIN ENTRANCE</span>
+                                <div id="zone-entrance-glow" class="absolute inset-0 bg-green-500/20 rounded-b-[2rem] animate-pulse blur-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="live" class="tab-content space-y-5">
+                <div class="glass-panel p-5 flex flex-col relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-xl font-extrabold flex items-center gap-2 text-white">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span> <span data-i18n="live_darshan">Live Darshan</span>
+                        </h2>
+                        <div class="bg-black/50 px-3 py-1.5 rounded-full border border-white/10 text-xs font-mono flex items-center gap-2 text-brand-300">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <span id="viewer-count">12,408</span>
+                        </div>
+                    </div>
+                    <div class="w-full aspect-video bg-gradient-to-br from-black to-brand-900/50 rounded-2xl border border-brand-500/30 relative overflow-hidden flex items-center justify-center shadow-inner mb-5">
+                        <div class="absolute w-32 h-32 rounded-full border border-brand-500/30 animate-[ping_4s_infinite]"></div>
+                        <svg class="w-12 h-12 text-brand-500/50" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                        <div class="absolute bottom-3 left-3 bg-red-600 text-white text-[10px] px-2 py-1 rounded font-bold tracking-widest" data-i18n="live_aarti">LIVE AARTI</div>
+                    </div>
+                    <div class="w-full bg-black/40 rounded-xl border border-white/10 p-4 mb-5 h-40 overflow-hidden relative">
+                        <div class="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-[rgba(10,5,0,0.8)] to-transparent z-10"></div>
+                        <div id="chant-box" class="space-y-3 text-sm text-white/80 transition-transform duration-500 flex flex-col justify-end h-full pb-1">
+                            <p><span class="text-brand-300 font-semibold">Kiran_D:</span> Jai Shree Ram 🙏</p>
+                            <p><span class="text-brand-300 font-semibold">Ananya88:</span> Beautiful Darshan.</p>
+                            <p><span class="text-brand-300 font-semibold">Rahul_M:</span> Om Namah Shivaya 🌺</p>
+                        </div>
+                    </div>
+                    <button onclick="offerFlowers()" class="w-full bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(225,29,72,0.4)] text-sm flex justify-center items-center gap-2">
+                        <span data-i18n="offer_flowers">Offer Flowers</span> 🌸
+                    </button>
+                </div>
+            </div>
+
+            <div id="booking" class="tab-content space-y-4">
+                <div id="step-1" class="step-content active glass-panel p-6">
+                    <div class="flex justify-between items-center mb-6"><h2 class="text-xl font-extrabold text-white" data-i18n="choose_time">Choose a Time</h2><span class="text-[10px] font-mono text-brand-900 bg-brand-500 font-bold px-2 py-1 rounded">STEP 1/3</span></div>
+                    <div id="calendar-container" class="mb-5"></div>
+                    <div class="space-y-3 mb-6">
+                        <div class="slot-btn bg-brand-500/20 border border-brand-500 rounded-xl p-4 flex justify-between items-center cursor-pointer transition-all" data-slot="09:00 - 10:00 AM"><span class="font-semibold text-brand-300 text-sm">09:00 - 10:00 AM</span><span class="text-[10px] font-bold px-2 py-1 bg-green-500/20 text-green-400 rounded-full" data-i18n="open">Open</span></div>
+                        <div class="slot-btn bg-black/40 border border-white/10 rounded-xl p-4 flex justify-between items-center cursor-pointer opacity-50" data-slot="10:00 - 11:00 AM"><span class="font-semibold text-white/70 text-sm">10:00 - 11:00 AM</span><span class="text-[10px] font-bold px-2 py-1 bg-red-500/20 text-red-400 rounded-full" data-i18n="full">Full</span></div>
+                    </div>
+                    <button class="w-full bg-white text-black font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:bg-gray-200 transition-all text-sm" onclick="goToStep('step-1', 'step-2')"><span data-i18n="proceed_details">Proceed to Details</span> &rarr;</button>
+                </div>
+
+                <div id="step-2" class="step-content glass-panel p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-extrabold flex items-center gap-2 text-white">
+                            <button class="text-white/50 hover:text-brand-300 p-1 back-btn">&larr;</button> <span data-i18n="pilgrim_details">Pilgrim Details</span>
+                        </h2>
+                        <span class="text-[10px] font-mono text-brand-900 bg-brand-500 font-bold px-2 py-1 rounded">STEP 2/3</span>
+                    </div>
+                    <div class="space-y-5 mb-8">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1 flex justify-between"><span data-i18n="pilgrim_name">Pilgrim Name</span> <span class="text-[8px] text-brand-500 opacity-70 border border-brand-500/30 px-1 rounded">MIC</span></label>
+                            <div class="relative mt-2">
+                                <input type="text" id="pilgrim-name" placeholder="Full Name" class="w-full p-4 pr-12 rounded-xl border border-white/10 bg-black/40 text-white focus:border-brand-500 outline-none transition-all">
+                                <button id="voice-btn" class="absolute right-2 top-2 p-2 rounded-lg text-gray-400 hover:text-brand-500 bg-white/5 border border-white/10"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg></button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1" data-i18n="age">Age</label>
+                                <input type="number" id="pilgrim-age" placeholder="45" class="w-full mt-2 p-4 rounded-xl border border-white/10 bg-black/40 text-white focus:border-brand-500 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider pl-1" data-i18n="gender">Gender</label>
+                                <select id="pilgrim-gender" class="w-full mt-2 p-4 rounded-xl border border-white/10 bg-black/40 text-white focus:border-brand-500 outline-none">
+                                    <option value="" disabled selected>Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="btn-next-3" class="w-full bg-white text-black font-bold py-3.5 rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.2)] transition-all text-sm"><span data-i18n="continue_payment">Continue to Payment</span> &rarr;</button>
+                </div>
+
+                <div id="step-3" class="step-content glass-panel p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-extrabold flex items-center gap-2 text-white">
+                            <button class="text-white/50 hover:text-brand-300 p-1 back-btn">&larr;</button> <span data-i18n="payment">Payment</span>
+                        </h2>
+                        <span class="text-[10px] font-mono text-brand-900 bg-brand-500 font-bold px-2 py-1 rounded">STEP 3/3</span>
+                    </div>
+                    
+                    <div class="bg-black/40 border border-white/10 rounded-xl p-5 mb-5">
+                        <div class="flex justify-between text-sm mb-3"><span class="text-gray-300" data-i18n="booking_fee">Booking Fee</span><span class="font-mono">₹150</span></div>
+                        <div class="bg-brand-500/10 border border-brand-500/20 rounded-xl p-4 my-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-brand-300 font-semibold" data-i18n="annadaan_donate">Annadaan Donation</span>
+                                <div class="flex items-center text-brand-500 font-mono text-lg">₹ <input type="number" id="donation-amount-pass" value="0" min="0" class="w-16 bg-transparent text-right border-b border-brand-500/30 focus:outline-none ml-1"></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between font-bold text-xl pt-2 border-t border-white/10 mt-4"><span data-i18n="total_payable">Total Payable</span><span id="display-total" class="font-mono text-brand-500">₹150</span></div>
+                    </div>
+
+                    <button id="confirm-slot-btn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] flex justify-center items-center gap-2">
+                        <span data-i18n="secure_pay">Secure Pay</span> <span id="btn-total" class="font-mono">₹150</span>
+                    </button>
+                </div>
+
+                <div id="darshan-pass-qr" class="step-content">
+                    <div class="glass-panel p-8 text-center border-brand-500/50 relative overflow-hidden">
+                        <p class="text-green-400 font-bold text-[10px] mb-2 uppercase tracking-widest flex justify-center items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span> <span data-i18n="pass_active">Pass Active</span></p>
+                        <h2 id="final-pilgrim-name" class="text-2xl font-black text-white mb-5">Name</h2>
+                        <div class="bg-white p-4 rounded-2xl inline-block shadow-[0_0_30px_rgba(255,255,255,0.2)] mb-5">
+                            <div id="qrcode"></div>
+                            <div id="qr-timer-container"><div id="qr-timer"></div></div>
+                        </div>
+                        <p id="pass-details" class="font-mono text-sm text-brand-300 font-bold mb-2"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="my-passes" class="tab-content space-y-5">
+                 <h2 class="text-2xl font-extrabold ml-2 text-white" data-i18n="my_passes">My Passes</h2>
+                 <div id="passes-list" class="space-y-4"><p id="empty-wallet" class="text-sm text-gray-500 text-center mt-12 bg-black/40 p-6 rounded-xl border border-white/10" data-i18n="no_passes">No active passes.</p></div>
+            </div>
+        </div>
+
+        <nav class="floating-nav">
+            <button class="nav-btn active" data-tab="home"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg><span class="text-[8px] font-bold tracking-wider" data-i18n="nav_home">HOME</span></button>
+            <button class="nav-btn" data-tab="booking"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><span class="text-[8px] font-bold tracking-wider" data-i18n="nav_book">BOOK</span></button>
+            <button class="nav-btn relative" data-tab="live">
+                <span class="absolute top-1.5 right-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span class="text-[8px] font-bold tracking-wider" data-i18n="nav_live">LIVE</span>
+            </button>
+            <button class="nav-btn" data-tab="donate"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg><span class="text-[8px] font-bold tracking-wider" data-i18n="nav_seva">SEVA</span></button>
+            <button class="nav-btn" data-tab="map"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg><span class="text-[8px] font-bold tracking-wider" data-i18n="nav_map">MAP</span></button>
+            <button class="nav-btn" data-tab="my-passes"><svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg><span class="text-[8px] font-bold tracking-wider" data-i18n="nav_passes">PASSES</span></button>
+        </nav>
+
+        <div id="sos-modal" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md hidden flex-col items-center justify-center px-6 transition-opacity">
+            <div class="glass-panel p-6 w-full text-center border-red-500/50 relative overflow-hidden">
+                <button id="sos-cancel" class="absolute top-4 right-4 text-white/50 hover:text-white p-2 text-xl font-bold">✕</button>
+                <div class="w-16 h-16 rounded-full bg-red-600/20 flex items-center justify-center mx-auto mb-4 border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]"><svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                <h2 class="text-2xl font-extrabold text-white mb-2" data-i18n="emergency_help">Emergency Help</h2>
+                <p class="text-sm text-gray-300 mb-8" data-i18n="sos_desc">Sliding this will alert temple security.</p>
+                <div class="slider-container" id="sos-slider">
+                    <div class="slider-bg" id="sos-bg"></div>
+                    <div class="slider-text" data-i18n="slide_help">SLIDE FOR HELP</div>
+                    <div class="slider-thumb" id="sos-thumb"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></div>
+                </div>
+                <div id="sos-success" class="hidden mt-4 bg-green-500/20 border border-green-500 text-green-400 p-3 rounded-lg text-sm font-bold" data-i18n="sos_sent">Location sent. Security en route.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Divine Temple Chime Audio Context (Harmonic layered sound)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        function playChime() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            // Frequencies for a divine bell sound
+            const frequencies = [440, 880, 1320]; 
+            
+            frequencies.forEach((freq, i) => {
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                // Lower frequencies sustain longer
+                gainNode.gain.setValueAtTime(0.2 / (i + 1), audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (2 - i * 0.5));
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 2);
+            });
+        }
+
+        // 2. Translation Dictionary
+        const translations = {
+            en: {
+                app_title: "Divya Darshan", splash_desc: "Your premium digital gateway to the divine.",
+                begin_journey: "Begin Journey", greeting: "Namaste, Devotee", temple_status: "Temple Status",
+                smooth: "SMOOTH", mins: "Mins", est_wait: "Estimated wait time for General Darshan.",
+                book_pass: "Book Pass", avoid_lines: "Avoid long lines", offer_seva: "Offer Seva",
+                digital_hundi: "Digital Hundi", today_quote: "Today's Darshan Quote",
+                gita_quote: '"Set your heart upon your work, but never on its reward." - Bhagavad Gita',
+                digital_hundi_title: "Digital Hundi", hundi_desc: "Your contributions maintain the temple and feed thousands of pilgrims daily.",
+                cause_annadaan: "🍲 Annadaan", cause_gaushala: "🐄 Gaushala", cause_trust: "🛕 Temple Trust",
+                custom_amount: "Custom Amount", offer_seva_btn: "Offer Seva", seva_accepted: "Seva Accepted",
+                blessings: "May the divine blessings be with you.", make_another: "Make another offering",
+                map_title: "Live Spiritual Map", map_desc: "Real-time crowd visualization", live: "LIVE",
+                shrine: "SHRINE", gate_a: "GATE A", gate_b: "GATE B", entrance: "MAIN ENTRANCE",
+                clear: "Clear", normal: "Normal", heavy: "Heavy", live_darshan: "Live Darshan",
+                live_aarti: "LIVE AARTI", offer_flowers: "Offer Flowers", choose_time: "Choose a Time",
+                open: "Open", full: "Full", proceed_details: "Proceed to Details", pilgrim_details: "Pilgrim Details",
+                pilgrim_name: "Pilgrim Name", age: "Age", gender: "Gender", mobile_no: "Mobile Number",
+                continue_payment: "Continue to Payment", payment: "Payment", booking_fee: "Booking Fee",
+                annadaan_donate: "Annadaan Donation", total_payable: "Total Payable", pay_method: "Payment Method",
+                secure_pay: "Secure Pay", pass_active: "Pass Active", my_passes: "My Passes", no_passes: "No active passes.",
+                nav_home: "HOME", nav_book: "BOOK", nav_live: "LIVE", nav_seva: "SEVA", nav_map: "MAP", nav_passes: "PASSES",
+                emergency_help: "Emergency Help", sos_desc: "Sliding this will alert temple security.",
+                slide_help: "SLIDE FOR HELP", sos_sent: "Location sent. Security en route."
+            },
+            hi: {
+                app_title: "दिव्य दर्शन", splash_desc: "दिव्यता का आपका प्रीमियम डिजिटल द्वार।",
+                begin_journey: "यात्रा प्रारंभ करें", greeting: "नमस्ते, भक्त", temple_status: "मंदिर की स्थिति",
+                smooth: "सामान्य भीड़", mins: "मिनट", est_wait: "सामान्य दर्शन के लिए अनुमानित प्रतीक्षा समय।",
+                book_pass: "पास बुक करें", avoid_lines: "लंबी कतारों से बचें", offer_seva: "सेवा अर्पित करें",
+                digital_hundi: "डिजिटल हुंडी", today_quote: "आज का दर्शन विचार",
+                gita_quote: '"कर्म करें, फल की चिंता न करें।" - भगवद गीता',
+                digital_hundi_title: "डिजिटल हुंडी", hundi_desc: "आपका योगदान मंदिर के रखरखाव में मदद करता है।",
+                cause_annadaan: "🍲 अन्नदान", cause_gaushala: "🐄 गौशाला", cause_trust: "🛕 मंदिर ट्रस्ट",
+                custom_amount: "अन्य राशि", offer_seva_btn: "सेवा अर्पित करें", seva_accepted: "सेवा स्वीकार की गई",
+                blessings: "ईश्वर का आशीर्वाद आप पर बना रहे।", make_another: "एक और सेवा अर्पित करें",
+                map_title: "लाइव आध्यात्मिक मानचित्र", map_desc: "वास्तविक समय भीड़ दृश्य", live: "लाइव",
+                shrine: "गर्भगृह", gate_a: "गेट ए", gate_b: "गेट बी", entrance: "मुख्य द्वार",
+                clear: "साफ", normal: "सामान्य", heavy: "भारी", live_darshan: "लाइव दर्शन",
+                live_aarti: "लाइव आरती", offer_flowers: "पुष्प अर्पित करें", choose_time: "समय चुनें",
+                open: "उपलब्ध", full: "पूर्ण", proceed_details: "विवरण भरें", pilgrim_details: "तीर्थयात्री विवरण",
+                pilgrim_name: "तीर्थयात्री का नाम", age: "आयु", gender: "लिंग", mobile_no: "मोबाइल नंबर",
+                continue_payment: "भुगतान करें", payment: "भुगतान", booking_fee: "बुकिंग शुल्क",
+                annadaan_donate: "अन्नदान सेवा", total_payable: "कुल देय राशि", pay_method: "भुगतान विधि",
+                secure_pay: "सुरक्षित भुगतान", pass_active: "पास सक्रिय", my_passes: "मेरे पास", no_passes: "कोई सक्रिय पास नहीं।",
+                nav_home: "होम", nav_book: "बुक", nav_live: "लाइव", nav_seva: "सेवा", nav_map: "मैप", nav_passes: "पास",
+                emergency_help: "आपातकालीन सहायता", sos_desc: "इसे स्लाइड करने से मंदिर सुरक्षा को सूचना मिलेगी।",
+                slide_help: "मदद के लिए स्लाइड करें", sos_sent: "स्थान भेजा गया। सुरक्षा बल रास्ते में है।"
+            }
+        };
+
+        let currentLang = 'en';
+
+        window.toggleLanguage = function() {
+            playChime();
+            currentLang = currentLang === 'en' ? 'hi' : 'en';
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) el.innerText = translations[currentLang][key];
+            });
+            const d = new Date();
+            const dateStr = currentLang === 'en' ? `${d.toLocaleString('en-US', { month: 'long' })} ${d.getDate()}, ${d.getFullYear()}` : `${d.getDate()} ${d.toLocaleString('hi-IN', { month: 'long' })}, ${d.getFullYear()}`;
+            const cal = document.getElementById('calendar-container');
+            if(cal) cal.innerHTML = `<div class="bg-black/40 border border-white/10 rounded-xl p-4 text-center text-sm font-bold text-brand-300 tracking-wider">${dateStr}</div>`;
+        };
+
+        // --- Interaction Logic ---
+        document.getElementById('enter-app-btn').addEventListener('click', () => {
+            playChime();
+            document.getElementById('splash-screen').style.transform = 'translateY(-100%)';
+            setTimeout(() => { document.getElementById('splash-screen').style.display = 'none'; }, 700);
+        });
+
+        const tabs = document.querySelectorAll('.tab-content');
+        const navBtns = document.querySelectorAll('.nav-btn');
+        window.setActiveTab = function(tabId) {
+            playChime();
+            tabs.forEach(t => t.classList.remove('active'));
+            navBtns.forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById('main-app').scrollTo({top: 0, behavior: 'smooth'}); 
+        };
+        navBtns.forEach(btn => btn.addEventListener('click', (e) => setActiveTab(e.currentTarget.dataset.tab)));
+
+        const d = new Date(); 
+        document.getElementById('calendar-container').innerHTML = `<div class="bg-black/40 border border-white/10 rounded-xl p-4 text-center text-sm font-bold text-brand-300 tracking-wider">${d.toLocaleString('default', { month: 'long' })} ${d.getDate()}, ${d.getFullYear()}</div>`;
+
+        // Booking
+        let bookingData = { slot: null, name: null, fee: 150, donation: 0 };
+        document.querySelectorAll('.slot-btn').forEach(div => {
+            div.addEventListener('click', () => {
+                playChime();
+                document.querySelectorAll('.slot-btn').forEach(d => d.classList.remove('border-brand-500', 'bg-brand-500/20'));
+                div.classList.add('border-brand-500', 'bg-brand-500/20'); 
+                bookingData.slot = div.dataset.slot;
+            });
+        });
+
+        window.goToStep = function(currentId, nextId) {
+            playChime();
+            document.getElementById(currentId).classList.remove('active'); 
+            document.getElementById(nextId).classList.add('active'); 
+            document.getElementById('main-app').scrollTo({top: 0, behavior: 'smooth'}); 
+        }
+
+        document.getElementById('btn-next-3').addEventListener('click', () => {
+            bookingData.name = document.getElementById('pilgrim-name').value;
+            const age = document.getElementById('pilgrim-age').value;
+            const gender = document.getElementById('pilgrim-gender').value;
+            if (!bookingData.name || !age || !gender) {
+                playChime();
+                return alert(currentLang === 'en' ? "Please fill out all details." : "कृपया सभी विवरण भरें।");
+            }
+            goToStep('step-2', 'step-3');
+        });
+
+        document.getElementById('donation-amount-pass').addEventListener('input', (e) => {
+            bookingData.donation = parseInt(e.target.value) || 0; 
+            const t = bookingData.fee + bookingData.donation;
+            document.getElementById('display-total').innerText = `₹${t}`; 
+            document.getElementById('btn-total').innerText = `₹${t}`;
+        });
+
+        document.getElementById('confirm-slot-btn').addEventListener('click', () => {
+            playChime();
+            const btn = document.getElementById('confirm-slot-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-t-white border-r-transparent border-b-white border-l-transparent rounded-full animate-spin"></div>`;
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                goToStep('step-3', 'darshan-pass-qr');
+                document.getElementById('final-pilgrim-name').innerText = bookingData.name;
+                document.getElementById('pass-details').innerHTML = `${bookingData.slot}<br/>${d.toDateString()}`;
+                
+                const qrContainer = document.getElementById('qrcode');
+                const timerBar = document.getElementById('qr-timer');
+                const idStr = Math.random().toString(36).substring(2, 9).toUpperCase();
+
+                const render = () => {
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, { text: JSON.stringify({ id: idStr, auth: Date.now() }), width: 140, height: 140, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.H });
+                    timerBar.style.transition = 'none'; timerBar.style.width = '100%';
+                    setTimeout(() => { timerBar.style.transition = 'width 15s linear'; timerBar.style.width = '0%'; }, 50);
+                };
+                render(); setInterval(render, 15000);
+
+                document.getElementById('empty-wallet').style.display = 'none';
+                const activeText = currentLang === 'en' ? 'Active' : 'सक्रिय';
+                document.getElementById('passes-list').innerHTML += `<div class="glass-panel p-5 mb-4 flex justify-between items-center"><div class="text-left"><p class="font-extrabold text-lg text-white">${bookingData.name}</p><p class="font-mono text-xs text-brand-300 mt-1">${idStr}</p></div><div class="text-right"><p class="text-xs text-gray-300 font-medium">${bookingData.slot}</p><span class="text-[10px] bg-green-500/20 border border-green-500/30 text-green-400 px-3 py-1 rounded-full mt-2 inline-block font-bold uppercase tracking-widest">${activeText}</span></div></div>`;
+            }, 1500);
+        });
+
+        document.querySelectorAll('.back-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+            playChime();
+            const c = e.target.closest('.step-content'); 
+            c.classList.remove('active'); 
+            c.previousElementSibling.classList.add('active'); 
+        }));
+
+        // Donation Flow
+        let donateAmount = 501;
+        const donateBtns = document.querySelectorAll('.amt-btn');
+        const customDonate = document.getElementById('custom-donate');
+        const donateBtnTotal = document.getElementById('donate-btn-total');
+        
+        function updateDonateUI(amt) { donateAmount = amt; donateBtnTotal.innerText = `₹${amt}`; }
+
+        donateBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                playChime();
+                donateBtns.forEach(b => { b.classList.remove('border-brand-500', 'bg-brand-500/20', 'text-brand-300', 'shadow-[0_0_15px_rgba(255,153,0,0.2)]'); b.classList.add('border-white/10', 'bg-black/40', 'text-white'); });
+                e.target.classList.remove('border-white/10', 'bg-black/40', 'text-white');
+                e.target.classList.add('border-brand-500', 'bg-brand-500/20', 'text-brand-300', 'shadow-[0_0_15px_rgba(255,153,0,0.2)]');
+                customDonate.value = ''; updateDonateUI(e.target.dataset.amt);
+            });
+        });
+
+        customDonate.addEventListener('input', (e) => {
+            donateBtns.forEach(b => { b.classList.remove('border-brand-500', 'bg-brand-500/20', 'text-brand-300', 'shadow-[0_0_15px_rgba(255,153,0,0.2)]'); b.classList.add('border-white/10', 'bg-black/40', 'text-white'); });
+            updateDonateUI(e.target.value || 0);
+        });
+
+        document.querySelectorAll('.cause-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                playChime();
+                document.querySelectorAll('.cause-btn').forEach(b => { b.classList.remove('border-brand-500', 'bg-brand-500/20', 'text-brand-300'); b.classList.add('border-white/10', 'bg-black/40', 'text-white/70'); });
+                e.target.classList.remove('border-white/10', 'bg-black/40', 'text-white/70');
+                e.target.classList.add('border-brand-500', 'bg-brand-500/20', 'text-brand-300');
+            });
+        });
+
+        document.getElementById('pay-donate-btn').addEventListener('click', () => {
+            playChime();
+            if(donateAmount < 1) return alert(currentLang === 'en' ? "Enter a valid amount." : "वैध राशि दर्ज करें।");
+            const btn = document.getElementById('pay-donate-btn');
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-t-white border-r-transparent border-b-white border-l-transparent rounded-full animate-spin"></div>`;
+            
+            setTimeout(() => {
+                document.getElementById('donation-card').style.display = 'none';
+                document.getElementById('donation-success').classList.remove('hidden');
+                document.getElementById('donation-success').classList.add('block');
+                const btnTxt = currentLang === 'en' ? 'Offer Seva' : 'सेवा अर्पित करें';
+                btn.innerHTML = `<span data-i18n="offer_seva_btn">${btnTxt}</span> <span id="donate-btn-total" class="font-mono">₹${donateAmount}</span>`;
+                for(let i=0; i<15; i++) setTimeout(() => offerFlowers(true), i * 150);
+            }, 1500);
+        });
+
+        window.resetDonation = function() {
+            playChime();
+            document.getElementById('donation-success').classList.add('hidden');
+            document.getElementById('donation-success').classList.remove('block');
+            document.getElementById('donation-card').style.display = 'block';
+        };
+
+        window.offerFlowers = function(isGold = false) {
+            playChime();
+            const container = document.getElementById('main-app'); 
+            const petal = document.createElement('div'); petal.className = 'petal';
+            petal.innerText = isGold ? ['✨','⭐','🌟'][Math.floor(Math.random()*3)] : ['🌸', '🌺', '🪷', '🌼'][Math.floor(Math.random() * 4)];
+            petal.style.right = (10 + Math.random() * 80) + 'vw'; petal.style.bottom = '-20px'; petal.style.position = 'fixed';
+            container.appendChild(petal); setTimeout(() => petal.remove(), 2500);
+        };
+
+        // Voice Mic Simulation
+        const voiceBtn = document.getElementById('voice-btn');
+        if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = currentLang === 'en' ? 'en-IN' : 'hi-IN'; 
+            voiceBtn.addEventListener('click', () => { 
+                playChime();
+                recognition.lang = currentLang === 'en' ? 'en-IN' : 'hi-IN';
+                voiceBtn.classList.add('recording'); 
+                try { recognition.start(); } catch(e) {} 
+            });
+            recognition.onresult = (e) => { document.getElementById('pilgrim-name').value = e.results[0][0].transcript.replace(/[.,]/g, ''); voiceBtn.classList.remove('recording'); };
+            recognition.onerror = recognition.onend = () => voiceBtn.classList.remove('recording');
+        } else { voiceBtn.style.display = 'none'; }
+
+        // Live Viewer Chat
+        setInterval(() => { document.getElementById('viewer-count').innerText = (12408 + Math.floor(Math.random() * 20) - 10).toLocaleString(); }, 3000);
+        const chantBox = document.getElementById('chant-box');
+        const chantsEn = ["Har Har Mahadev 🙏", "Jai Shree Ram", "Beautiful view 🌸", "Om Namah Shivaya", "Feeling blessed"];
+        const chantsHi = ["हर हर महादेव 🙏", "जय श्री राम", "अद्भुत दर्शन 🌸", "ओम नमः शिवाय", "धन्य हो गए"];
+        const names = ["Aarti_P", "Vijay99", "Devotee_108", "Sunita_R", "Kishore_K"];
+        setInterval(() => {
+            const newChant = document.createElement('p');
+            const arr = currentLang === 'en' ? chantsEn : chantsHi;
+            newChant.innerHTML = `<span class="text-brand-300 font-semibold opacity-90">${names[Math.floor(Math.random()*names.length)]}:</span> ${arr[Math.floor(Math.random()*arr.length)]}`;
+            chantBox.appendChild(newChant); if (chantBox.children.length > 6) chantBox.removeChild(chantBox.firstChild);
+        }, 3500);
+
+        // SOS Slider Logic
+        const sosBtn = document.getElementById('sos-trigger-btn'), sosModal = document.getElementById('sos-modal'), sosCancel = document.getElementById('sos-cancel'), sosThumb = document.getElementById('sos-thumb'), sosBg = document.getElementById('sos-bg'), sosContainer = document.getElementById('sos-slider'), sosSuccess = document.getElementById('sos-success');
+        let isDragging = false;
+
+        sosBtn.addEventListener('click', () => { 
+            playChime();
+            sosModal.classList.remove('hidden'); sosModal.classList.add('flex'); 
+        });
+        sosCancel.addEventListener('click', () => { 
+            playChime();
+            sosModal.classList.add('hidden'); sosModal.classList.remove('flex'); 
+            sosThumb.style.left = '3px'; sosBg.style.width = '0'; sosSuccess.classList.add('hidden'); 
+        });
+
+        const handleStart = () => { isDragging = true; };
+        const handleMove = (e) => {
+            if (!isDragging) return;
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX; let rect = sosContainer.getBoundingClientRect();
+            let newLeft = clientX - rect.left - 25; 
+            if (newLeft < 3) newLeft = 3; if (newLeft > rect.width - 53) newLeft = rect.width - 53;
+            sosThumb.style.left = newLeft + 'px'; sosBg.style.width = (newLeft + 25) + 'px';
+            if (newLeft >= rect.width - 55) { 
+                isDragging = false; sosThumb.style.left = (rect.width - 53) + 'px'; 
+                sosSuccess.classList.remove('hidden'); 
+                setTimeout(() => sosCancel.click(), 3000); 
+            }
+        };
+        const handleEnd = () => { if(!isDragging) return; isDragging = false; sosThumb.style.left = '3px'; sosBg.style.width = '0'; };
+
+        sosThumb.addEventListener('mousedown', handleStart); document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleEnd);
+        sosThumb.addEventListener('touchstart', handleStart); document.addEventListener('touchmove', handleMove); document.addEventListener('touchend', handleEnd);
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene(); 
+        scene.fog = new THREE.FogExp2(0x0A0500, 0.005);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000); 
+        camera.position.z = 100;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight); 
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const particleCount = 800;
+        const geometry = new THREE.BufferGeometry();
+        const pos = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const speeds = new Float32Array(particleCount);
+
+        const color1 = new THREE.Color(0xFFD700);
+        const color2 = new THREE.Color(0xFF8C00);
+        const colorCongest = new THREE.Color(0xFF0000);
+
+        for(let i=0; i<particleCount; i++) {
+            pos[i*3] = (Math.random() - 0.5) * 300;
+            pos[i*3+1] = (Math.random() - 0.5) * 300;
+            pos[i*3+2] = (Math.random() - 0.5) * 200;
+            speeds[i] = Math.random() * 0.2 + 0.1;
+            
+            const mixColor = color1.clone().lerp(color2, Math.random());
+            colors[i*3] = mixColor.r; colors[i*3+1] = mixColor.g; colors[i*3+2] = mixColor.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
+        const context = canvas.getContext('2d');
+        const gradient = context.createRadialGradient(8, 8, 0, 8, 8, 8);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)'); gradient.addColorStop(0.2, 'rgba(255,200,0,1)'); gradient.addColorStop(0.4, 'rgba(255,100,0,0.5)'); gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        context.fillStyle = gradient; context.fillRect(0,0,16,16);
+        const texture = new THREE.CanvasTexture(canvas);
+
+        const material = new THREE.PointsMaterial({ size: 4, vertexColors: true, map: texture, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        window.simulationConfig = { ingressMultiplier: 1.0, isSurge: false };
+
+        let time = 0;
+        let isRendering = true;
+        document.addEventListener("visibilitychange", () => { isRendering = !document.hidden; });
+
+        function runEdgeSurgeAI() {
+            const hour = new Date().getHours();
+            const isPeak = (hour >= 10 && hour <= 12) || (hour >= 18 && hour <= 20);
+            
+            const aiStatus = document.getElementById('ai-status');
+            const sanctumGlow = document.getElementById('zone-sanctum-glow');
+            const northGlow = document.getElementById('zone-north-glow');
+            const eastGlow = document.getElementById('zone-east-glow');
+            const entranceGlow = document.getElementById('zone-entrance-glow');
+
+            window.simulationConfig.isSurge = isPeak;
+
+            if(isPeak) {
+                if(aiStatus) {
+                    const text = currentLang === 'en' ? 'HEAVY CROWD DETECTED' : 'भारी भीड़';
+                    aiStatus.innerHTML = `<span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span> ${text}`;
+                    aiStatus.classList.replace('text-green-400', 'text-red-400');
+                    aiStatus.classList.replace('bg-green-500/20', 'bg-red-500/20');
+                    aiStatus.classList.replace('border-green-500/30', 'border-red-500/30');
+                }
+                
+                window.simulationConfig.ingressMultiplier += (2.2 - window.simulationConfig.ingressMultiplier) * 0.02;
+                if(document.getElementById('stat-delay')) document.getElementById('stat-delay').innerText = "45";
+                
+                if(sanctumGlow) sanctumGlow.className = 'absolute inset-0 bg-red-500/50 rounded-xl animate-pulse blur-md';
+                if(northGlow) northGlow.className = 'absolute inset-0 bg-yellow-500/30 rounded-lg animate-pulse blur-sm';
+                if(eastGlow) eastGlow.className = 'absolute inset-0 bg-red-500/40 rounded-lg animate-pulse blur-sm';
+                if(entranceGlow) entranceGlow.className = 'absolute inset-0 bg-yellow-500/30 rounded-b-[2rem] animate-pulse blur-sm';
+
+            } else {
+                if(aiStatus) {
+                    const text = currentLang === 'en' ? 'SMOOTH' : 'सामान्य भीड़';
+                    aiStatus.innerHTML = `<span class="w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span> ${text}`;
+                    aiStatus.classList.replace('text-red-400', 'text-green-400');
+                    aiStatus.classList.replace('bg-red-500/20', 'bg-green-500/20');
+                    aiStatus.classList.replace('border-red-500/30', 'border-green-500/30');
+                }
+                
+                window.simulationConfig.ingressMultiplier += (1.0 - window.simulationConfig.ingressMultiplier) * 0.02;
+                if(document.getElementById('stat-delay')) document.getElementById('stat-delay').innerText = "15";
+
+                if(sanctumGlow) sanctumGlow.className = 'absolute inset-0 bg-yellow-500/40 rounded-xl animate-pulse blur-md';
+                if(northGlow) northGlow.className = 'absolute inset-0 bg-green-500/20 rounded-lg animate-pulse blur-sm';
+                if(eastGlow) eastGlow.className = 'absolute inset-0 bg-green-500/20 rounded-lg animate-pulse blur-sm';
+                if(entranceGlow) entranceGlow.className = 'absolute inset-0 bg-green-500/20 rounded-b-[2rem] animate-pulse blur-sm';
+            }
+        }
+
+        function animate() {
+            if (!isRendering) return; 
+            requestAnimationFrame(animate);
+            time += 0.005 * window.simulationConfig.ingressMultiplier;
+            runEdgeSurgeAI();
+
+            const positions = particles.geometry.attributes.position.array;
+            const cols = particles.geometry.attributes.color.array;
+            
+            for(let i=0; i<particleCount; i++) {
+                let currentSpeed = speeds[i] * window.simulationConfig.ingressMultiplier;
+                positions[i*3+1] += currentSpeed; 
+                positions[i*3] += Math.sin(time + i) * 0.1; 
+                
+                if(positions[i*3+1] > 150) {
+                    positions[i*3+1] = -150;
+                    positions[i*3] = (Math.random() - 0.5) * 300;
+                }
+                
+                if (window.simulationConfig.isSurge && i % 3 === 0) {
+                    cols[i*3] = colorCongest.r; cols[i*3+1] = colorCongest.g; cols[i*3+2] = colorCongest.b;
+                } else {
+                    const mixColor = color1.clone().lerp(color2, (i%10)/10); 
+                    cols[i*3] = mixColor.r; cols[i*3+1] = mixColor.g; cols[i*3+2] = mixColor.b;
+                }
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+            
+            camera.position.x = Math.sin(time * 0.2) * 50;
+            camera.position.y = Math.cos(time * 0.1) * 20;
+            camera.lookAt(scene.position);
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', () => { 
+            camera.aspect = window.innerWidth / window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+        });
+        
+        animate();
+    </script>
+</body>
+</html>
